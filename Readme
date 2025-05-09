@@ -1,0 +1,163 @@
+To ping the server: ubuntu-1049142@1049142-ubuntu-2025-feb:~$ sudo netstat -tuln | grep 5072
+~expected result: tcp        0      0 0.0.0.0:5072            0.0.0.0:*               LISTEN
+
+
+Step 1: Create the systemd Service File
+
+SSH into your server or GitHub self-hosted runner where the application is running.
+
+    Create a new service file in /etc/systemd/system/. For example:
+
+sudo nano /etc/systemd/system/myefcoreproject.service
+
+Add the following configuration to the file:
+
+    [Unit]
+    Description=My EF Core Project Server
+    After=network.target
+
+    [Service]
+    # Set the working directory to your project
+    WorkingDirectory=/home/ubuntu-1049142/persistent-dir/Cargohub-Inf2/MyEFCoreProject
+
+    # Command to start the server
+    ExecStart=/usr/share/dotnet/dotnet /home/ubuntu-1049142/persistent-dir/Cargohub-Inf2/MyEFCoreProject/bin/Release/net8.0/MyEFCoreProject.dll --urls "http://0.0.0.0:5072"
+
+    # Ensure the service restarts if it crashes
+    Restart=always
+
+    # Use the specific user to run the service
+    User=ubuntu-1049142
+
+    [Install]
+    WantedBy=multi-user.target
+
+    Replace paths like /home/ubuntu-1049142/persistent-dir/... with the actual paths in your setup.
+
+Step 2: Reload systemd Daemon
+
+After creating the service file, reload systemd to recognize the new service:
+
+sudo systemctl daemon-reload
+
+Step 3: Start the Service
+
+Start the service using the following command:
+
+sudo systemctl start myefcoreproject
+
+Step 4: Enable the Service on Boot
+
+To ensure the service starts automatically on system boot:
+
+sudo systemctl enable myefcoreproject
+
+Step 5: Check Service Status
+
+To check if the service is running correctly:
+
+sudo systemctl status myefcoreproject
+
+You should see output similar to this:
+
+● myefcoreproject.service - My EF Core Project Server
+   Loaded: loaded (/etc/systemd/system/myefcoreproject.service; enabled; vendor preset: enabled)
+   Active: active (running) since Tue 2024-12-03 14:00:00 UTC; 5s ago
+ Main PID: 1234 (dotnet)
+    Tasks: 5
+   Memory: 32M
+   CPU: 10ms
+   CGroup: /system.slice/myefcoreproject.service
+           └─1234 /usr/share/dotnet/dotnet ...
+
+Step 6: Stop or Restart the Service
+
+If you need to stop or restart the server, use the following commands:
+
+    Stop the service:
+
+sudo systemctl stop myefcoreproject
+
+Restart the service:
+
+    sudo systemctl restart myefcoreproject
+
+Step 7: Log Monitoring
+
+To check logs for the service, use journalctl:
+
+sudo journalctl -u myefcoreproject -f
+
+Workflow Integration
+
+You can modify your GitHub Actions workflow to interact with the systemd service. For example, to restart the service after deployment:
+
+- name: Restart Server
+  run: |
+    sudo systemctl restart myefcoreproject
+    sudo systemctl status myefcoreproject
+
+Summary
+
+Using systemd provides a reliable and production-ready way to manage your server. If you encounter any issues while setting it up, share the error messages or behavior, and I’ll help you troubleshoot!
+
+
+# Step-by-Step Guide: Updating the systemd Service After Changes to .csproj
+# 1. Rebuild the Project
+
+# After making changes to your .csproj file (such as adding/removing packages or modifying settings), you must rebuild the project to generate the updated output files.
+
+# Command to run:
+
+# dotnet build --configuration Release
+
+#     This will build the project in the Release configuration.
+#     The output will be placed in the bin/Release/net8.0/ directory (or the appropriate framework and configuration folder).
+
+# 2. Update the systemd Service File
+
+# If the changes to your .csproj file result in a change to the output location or name (for example, the .dll file name or the output directory), you’ll need to update the systemd service file.
+
+# Edit the systemd service file:
+
+#     Open the service file for editing:
+
+# sudo nano /etc/systemd/system/myefcoreproject.service
+
+#     Find the line starting with ExecStart, which defines the command to run your application. It should look something like this:
+
+# ExecStart=/usr/share/dotnet/dotnet /path/to/your/project/bin/Release/net8.0/MyEFCoreProject.dll
+
+#     If the output .dll file name or path has changed due to modifications in the .csproj, update the path accordingly.
+
+#     For example, if your project output file has changed from MyEFCoreProject.dll to NewProjectName.dll, you should update it as follows:
+
+#     ExecStart=/usr/share/dotnet/dotnet /path/to/your/project/bin/Release/net8.0/NewProjectName.dll
+
+#     Save and close the file by pressing CTRL + X, then Y to confirm, and Enter to save.
+
+# 3. Reload the systemd Daemon
+
+# After updating the service file, you need to reload the systemd daemon to apply the changes. This will allow systemd to pick up the modified service configuration.
+
+# Command to run:
+
+# sudo systemctl daemon-reload
+
+# 4. Restart the Service
+
+# Now that the service file is updated and the daemon is reloaded, restart the service to apply the changes and run the new version of your application.
+
+# Command to run:
+
+# sudo systemctl restart myefcoreproject
+
+# 5. Verify the Service is Running
+
+# After restarting the service, you can check if it’s running correctly by using the following command:
+
+# Command to run:
+
+# sudo systemctl status myefcoreproject
+
+#     This will show the status of the service. If everything is configured correctly, it should display as active and running.

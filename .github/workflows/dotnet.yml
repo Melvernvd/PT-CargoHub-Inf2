@@ -1,0 +1,90 @@
+# This workflow will build a .NET project
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-net
+
+name: .NET and Python Tests
+
+on:
+  push:
+    branches: 
+      - "C#-Cargohub"
+  pull_request:
+    branches: 
+      - "C#-Cargohub"
+  
+
+jobs:
+  build:
+
+    runs-on: self-hosted
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 8.0.x
+    
+    - name: Restore dependencies
+      run: dotnet restore
+    
+    - name: Build
+      run: dotnet build --no-restore
+    
+    # # Run .NET tests
+    # - name: Test
+    #   run: dotnet test --no-build --verbosity normal
+    
+
+    # Step to pull the latest code from Git
+    - name: Pull Latest Changes from Git
+      run: |
+        cd ~/persistent-dir/Cargohub-Inf2
+        git fetch origin C#-Cargohub
+        git reset --hard origin/C#-Cargohub
+
+    - name: Backup appsettings.json
+      run: |
+        cp ~/persistent-dir/Cargohub-Inf2/MyEFCoreProject/appsettings.json ~/persistent-dir/Cargohub-Inf2/MyEFCoreProject/appsettings.json.bak
+
+    - name: Update appsettings.json for Test Database
+      run: |
+        sed -i 's|"sqlite": "Data Source=cargohub_database.db"|"sqlite": "Data Source=cargohub_Test_database.db"|' ~/persistent-dir/Cargohub-Inf2/MyEFCoreProject/appsettings.json
+
+    #restart so it uses the updated appsettings.json.
+    - name: Restart EF Core Project Service
+      run: |
+        echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S systemctl restart myefcoreproject
+        sudo systemctl status myefcoreproject  # Verify it's running
+
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+
+    
+    - name: Install pytest and requests
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest requests
+    
+    - name: Run pytest tests
+    # -v for more detailed output (easier debugging)
+      run: |
+          sleep 20  # Sleep to ensure the server is ready
+          pytest ~/persistent-dir/Cargohub-Inf2/Integrationtests/endpoints_tests.py -v
+
+
+    # Always restore the original appsettings.json
+    - name: Restore Original appsettings.json
+      if: always()
+      run: |
+        mv ~/persistent-dir/Cargohub-Inf2/MyEFCoreProject/appsettings.json.bak ~/persistent-dir/Cargohub-Inf2/MyEFCoreProject/appsettings.json
+
+    # Restart the service with the original configuration
+    - name: Restart EF Core Project Service with Original Configuration
+      if: always()
+      run: |
+        echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S systemctl restart myefcoreproject
+        sudo systemctl status myefcoreproject  # Verify it's running

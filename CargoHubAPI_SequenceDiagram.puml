@@ -1,0 +1,15 @@
+@startuml CargoHubAPI_SequenceDiagram
+actor User
+participant UI
+participant Controller
+participant Service
+participant Repository
+
+User -> UI : Enters Credentials
+UI -> Controller : Submits Credentials
+Controller -> Service : Validates User
+Service -> Repository : Queries Database
+Repository -> Service : Returns Data
+Service -> Controller : Returns Validation Result
+Controller -> UI : Returns Data Status
+@enduml
